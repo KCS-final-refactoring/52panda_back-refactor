@@ -49,6 +49,7 @@ public class GlobalExceptionHandler {
     }
 
     // 개발자가 직접 정의한 예외
+    // 언체크 예외 처리
     @ExceptionHandler(value = {CommonException.class})
     public ResponseDto<?> handleApiException(CommonException e) {
         log.error("handleApiException() in GlobalExceptionHandler throw CommonException : {}", e.getMessage());
@@ -56,6 +57,7 @@ public class GlobalExceptionHandler {
     }
 
     // 서버, DB 예외
+    // 체크 예외처리
     @ExceptionHandler(value = {Exception.class})
     public ResponseDto<?> handleException(Exception e) {
         log.error("handleException() in GlobalExceptionHandler throw Exception : {}", e.getMessage());
