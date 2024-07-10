@@ -82,7 +82,21 @@ public class ProgressItemsService {
     }
 
 
+    // no offset 조회 서비스
 
+    public ProgressItemListDto getProgressItemsNoOffset(String category, Integer method, String region,Long lastItemId ) {
+        List<ProgressItemsDto> itemtemDtoList = new ArrayList<>();
+
+        List<AuctionProgressItem> progressItems = itemRepository.findByProgressItemWithFilter(category,method,region,lastItemId,10);
+        for (AuctionProgressItem progressItem : progressItems) {
+            ProgressItemsDto progressItemsDto = ProgressItemsDto.fromProgressEntity(progressItem);
+            itemtemDtoList.add(progressItemsDto);
+        }
+
+        return ProgressItemListDto.builder()
+                .progressItemListDto(itemtemDtoList)
+                .build();
+    }
     /**
      * Hot 아이템 목록 Redis 조회 서비스 로직
      */

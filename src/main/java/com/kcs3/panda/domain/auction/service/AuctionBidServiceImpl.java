@@ -115,7 +115,7 @@ public class AuctionBidServiceImpl implements AuctionBidService {
     }//end updateAuctionProgressItemMaxBid()
 
     @Override
-    @Scheduled(cron = "30 * * * * *")  // 매 시간 정각에 실행
+    @Scheduled(cron = "0 0 0 * * *")  // 매 시간 정각에 실행
     public void finishAuctionsByTime() {
         LocalDateTime now = LocalDateTime.now();
         Optional<List<AuctionProgressItem>> completedItemsOptional = auctionProgressItemRepo.findAllByBidFinishTimeBefore(now);

@@ -5,6 +5,7 @@ import com.kcs3.panda.domain.auction.dto.ProgressItemListDto;
 import com.kcs3.panda.domain.auction.service.ProgressItemsService;
 import com.kcs3.panda.global.dto.ResponseDto;
 import lombok.AllArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @AllArgsConstructor
+@Log4j2
 @RequestMapping("api/v1/no-auth")
 public class ProgressItemsController {
 
@@ -37,7 +39,20 @@ public class ProgressItemsController {
                                                                 @RequestParam(required = false) String region,
                                                                 @RequestParam String status
                                                                 ) {
+        log.info("페이지:"+pageable.getPageNumber());
         return ResponseDto.ok(progressItemsService.getProgressItems(category, tradingMethod, region, status, pageable));
+
+    }
+
+    // no-offset 조회
+    @GetMapping("/auction/no-offset")
+    public ResponseDto<ProgressItemListDto> getProgressItemsNoOffsetApi(
+                                                                @RequestParam(required = false) String category,
+                                                                @RequestParam(required = false) Integer tradingMethod,
+                                                                @RequestParam(required = false) String region,
+                                                                @RequestParam(required = false) Long lastItemId
+    ) {
+        return ResponseDto.ok(progressItemsService.getProgressItemsNoOffset(category, tradingMethod, region, lastItemId));
 
     }
 
