@@ -1,15 +1,13 @@
 package com.kcs3.panda.domain.auction.service;
 
 
-import com.kcs3.panda.domain.auction.dto.HotItemListDto;
-import com.kcs3.panda.domain.auction.dto.HotItemsDto;
-import com.kcs3.panda.domain.auction.dto.ProgressItemListDto;
-import com.kcs3.panda.domain.auction.dto.ProgressItemsDto;
+import com.kcs3.panda.domain.auction.dto.*;
 import com.kcs3.panda.domain.auction.entity.AuctionCompleteItem;
 import com.kcs3.panda.domain.auction.entity.AuctionInfo;
 import com.kcs3.panda.domain.auction.entity.AuctionProgressItem;
 import com.kcs3.panda.domain.auction.entity.Item;
 import com.kcs3.panda.domain.auction.repository.AuctionInfoRepository;
+import com.kcs3.panda.domain.auction.repository.ItemQueryDSLRepository;
 import com.kcs3.panda.domain.auction.repository.ItemRepository;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -78,6 +76,34 @@ public class ProgressItemsService {
 
         return ProgressItemListDto.builder()
                 .progressItemListDto(itemtemDtoList)
+                .build();
+    }
+
+
+
+    /**
+     * no offset 조회 서비스
+     */
+    public ProgressItemListDto getProgressItemsNoOffset(String category, Integer method, String region, Long lastItemId) {
+        List<ProgressItemsDto> itemDtoList = new ArrayList<>();
+
+        ItemSearchCondition condition = ItemSearchCondition.builder()
+                .category(category)
+                .method(method)
+                .region(region)
+                .lastItemId(lastItemId)
+                .limit(10)
+                .build();
+
+        List<AuctionProgressItem> progressItems = itemRepository.itemListSearch(condition);
+
+        for (AuctionProgressItem progressItem : progressItems) {
+            ProgressItemsDto progressItemsDto = ProgressItemsDto.fromProgressEntity(progressItem);
+            itemDtoList.add(progressItemsDto);
+        }
+
+        return ProgressItemListDto.builder()
+                .progressItemListDto(itemDtoList)
                 .build();
     }
 

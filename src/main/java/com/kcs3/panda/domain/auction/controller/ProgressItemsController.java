@@ -41,6 +41,21 @@ public class ProgressItemsController {
 
     }
 
+    /**
+     * no-offset 조회 API
+     */
+    @GetMapping("/auction/no-offset")
+    public ResponseDto<ProgressItemListDto> getProgressItemsNoOffsetApi(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Integer tradingMethod,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) Long lastItemId
+    ) {
+        ProgressItemListDto progressItemListDto = progressItemsService.getProgressItemsNoOffset(category, tradingMethod, region, lastItemId);
+        return ResponseDto.ok(progressItemListDto);
+    }
+
+
 
     /**
      * Redis에서 Hot Item 목록 조회 - API
