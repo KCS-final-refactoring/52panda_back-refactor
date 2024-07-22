@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -145,8 +146,10 @@ public class ProgressItemsService {
 
     /**
      * 핫아이템 Redis 저장 서비스 로직
+     * refactor : RDB에서 조회한 데이터를 Redis에 다이렉트 저장한다.
      */
-    public void saveHotItems() {
+    @Cacheable(value = "hotItems", key = "'hotItemList'")
+    public HotItemListDto getHotItemList() {
 
         // 최근 인기 아이템의 itemId 리스트 조회
         Pageable pageable = PageRequest.of(0, 10);
@@ -159,22 +162,16 @@ public class ProgressItemsService {
             hotItemList.add(hotItem);
         }
 
-
-
-        // 조회된 AuctionProgressItem을 HotItemsDto로 변환
+        // 조회된 AuctionProgressItem을 NewItemsDto로 변환
         List<HotItemsDto> hotItemsDtos = hotItemList
                 .stream()
                 .map(HotItemsDto::fromHotEntity)
                 .collect(Collectors.toList());
 
 
-        int i = 1;
-        for (HotItemsDto hotItemsDto : hotItemsDtos) {
-            redisTemplate.opsForValue().set("hot_item:" + i, hotItemsDto);
-            i++;
-        }
-
-
+        return HotItemListDto.builder()
+                .hotItemListDtos(hotItemsDtos)
+                .build();
     }
 
 
