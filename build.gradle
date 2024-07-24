@@ -36,6 +36,7 @@ dependencies {
 	// Spring Data Redis 의존성
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     testImplementation "com.redis.testcontainers:testcontainers-redis-junit:1.6.4"
+	implementation 'org.redisson:redisson-spring-boot-starter:3.18.0'
 
 	// Redis 클라이언트인 Lettuce 의존성
 	implementation 'io.lettuce:lettuce-core'

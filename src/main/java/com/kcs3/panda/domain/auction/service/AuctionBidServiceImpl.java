@@ -17,6 +17,8 @@ import com.kcs3.panda.global.exception.CommonException;
 import com.kcs3.panda.global.exception.ErrorCode;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -43,50 +46,87 @@ public class AuctionBidServiceImpl implements AuctionBidService {
     private AlarmRepository alarmRepository;
     @Autowired
     private ProgressItemsService progressItemsService;
+    @Autowired
+    private RedissonClient redissonClient;
+
 
 
     @Override
     @Transactional
     public boolean attemptBid(Long itemId, Long userId, String nickname, int bidPrice) {
-        AuctionProgressItem progressItem = auctionProgressItemRepo.findByItemItemId(itemId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ITEM_NOT_FOUND));
 
-        Long sellerId = itemRepository.findSellerIdByItemId(itemId);
-        if (sellerId.equals(userId)) {
-            throw new CommonException(ErrorCode.BIDDER_IS_SELLER);
-        }
+        // Redisson을 사용하여 분산 락 획득
+        RLock lock = redissonClient.getLock("auction_lock_" + itemId);
+        boolean isLocked = false;
 
-        if (progressItem.getBuyNowPrice() !=null && bidPrice >= progressItem.getBuyNowPrice()) {
-            log.debug("User {}가 Item {}을 즉시 구매 - 가격: {}", itemId, userId, bidPrice);
+
+        try{
+
+
+            isLocked = lock.tryLock(10, 5, TimeUnit.SECONDS);
+            if (!isLocked) {
+
+                throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
+
+
+
+            AuctionProgressItem progressItem = auctionProgressItemRepo.findByItemItemId(itemId)
+                    .orElseThrow(() -> new CommonException(ErrorCode.ITEM_NOT_FOUND));
+
+
+            Long sellerId = itemRepository.findSellerIdByItemId(itemId);
+
+            if (sellerId.equals(userId)) {
+                throw new CommonException(ErrorCode.BIDDER_IS_SELLER);
+            }
+
+
+            if (progressItem.getBuyNowPrice() !=null && bidPrice >= progressItem.getBuyNowPrice()) {
+                log.debug("User {}가 Item {}을 즉시 구매 - 가격: {}", itemId, userId, bidPrice);
+
+                saveAuctionInfo(itemId, userId, bidPrice);
+                updateAuctionProgressItemMaxBid(progressItem, userId, nickname, bidPrice);
+                transferItemToComplete(progressItem);
+                return true;
+            }
+
+
+            Optional<AuctionBidHighestDto> highestBid
+                    = auctionProgressItemRepo.findHighestBidByAuctionProgressItemId(progressItem.getAuctionProgressItemId());
+
+
+            highestBid.ifPresentOrElse(
+                    hbid -> {
+                        if (hbid.userId() != null && userId.equals(hbid.userId())) {
+                            throw new CommonException(ErrorCode.BIDDER_IS_SAME);
+                        }
+
+                        if ((hbid.userId() != null && bidPrice <= hbid.maxPrice()) ||
+                                (hbid.userId() == null && bidPrice < hbid.maxPrice())) {
+                            throw new CommonException(ErrorCode.BID_NOT_HIGHER);
+                        }
+                    },
+                    () -> {
+                        throw new CommonException(ErrorCode.AUCTION_PRICE_NOT_FOUND);
+                    }
+            );
+
 
             saveAuctionInfo(itemId, userId, bidPrice);
+
             updateAuctionProgressItemMaxBid(progressItem, userId, nickname, bidPrice);
-            transferItemToComplete(progressItem);
+
             return true;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+
+            if (isLocked) {
+                lock.unlock();
+            }
         }
 
-        Optional<AuctionBidHighestDto> highestBid
-                = auctionProgressItemRepo.findHighestBidByAuctionProgressItemId(progressItem.getAuctionProgressItemId());
-
-        highestBid.ifPresentOrElse(
-                hbid -> {
-                    if (hbid.userId() != null && userId.equals(hbid.userId())) {
-                        throw new CommonException(ErrorCode.BIDDER_IS_SAME);
-                    }
-
-                    if ((hbid.userId() != null && bidPrice <= hbid.maxPrice()) ||
-                            (hbid.userId() == null && bidPrice < hbid.maxPrice())) {
-                        throw new CommonException(ErrorCode.BID_NOT_HIGHER);
-                    }
-                },
-                () -> {
-                    throw new CommonException(ErrorCode.AUCTION_PRICE_NOT_FOUND);
-                }
-        );
-
-        saveAuctionInfo(itemId, userId, bidPrice);
-        updateAuctionProgressItemMaxBid(progressItem, userId, nickname, bidPrice);
-        return true;
     }//end attemptBid()
 
     private void saveAuctionInfo(Long itemId, Long userId, int price) {
@@ -115,7 +155,7 @@ public class AuctionBidServiceImpl implements AuctionBidService {
     }//end updateAuctionProgressItemMaxBid()
 
     @Override
-    @Scheduled(cron = "30 * * * * *")  // 매 시간 정각에 실행
+    //@Scheduled(cron = "30 * * * * *")  // 매 시간 정각에 실행
     public void finishAuctionsByTime() {
         LocalDateTime now = LocalDateTime.now();
         Optional<List<AuctionProgressItem>> completedItemsOptional = auctionProgressItemRepo.findAllByBidFinishTimeBefore(now);
