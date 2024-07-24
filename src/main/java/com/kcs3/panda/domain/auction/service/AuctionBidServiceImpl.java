@@ -130,7 +130,7 @@ public class AuctionBidServiceImpl implements AuctionBidService {
         }
 
         progressItemsService.saveNewItems();
-        progressItemsService.saveHotItems();
+
 
     }//end transferCompletedAuctions()
 

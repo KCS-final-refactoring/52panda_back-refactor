@@ -11,7 +11,7 @@ public class AuctionProgressItemFixture {
         return AuctionProgressItem.builder()
                 .auctionProgressItemId(1L)
                 .item(item)
-                .ItemTitle("진행중인 경매물품1")
+                .itemTitle("진행중인 경매물품1")
                 .thumbnail("thumbnail_image_url")
                 .startPrice(0)
                 .buyNowPrice(1000)

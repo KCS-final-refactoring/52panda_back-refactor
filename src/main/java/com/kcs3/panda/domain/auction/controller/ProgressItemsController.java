@@ -41,13 +41,29 @@ public class ProgressItemsController {
 
     }
 
+    /**
+     * no-offset 조회 API
+     */
+    @GetMapping("/auction/no-offset")
+    public ResponseDto<ProgressItemListDto> getProgressItemsNoOffsetApi(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Integer tradingMethod,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) Long lastItemId
+    ) {
+        ProgressItemListDto progressItemListDto = progressItemsService.getProgressItemsNoOffset(category, tradingMethod, region, lastItemId);
+        return ResponseDto.ok(progressItemListDto);
+    }
+
+
 
     /**
      * Redis에서 Hot Item 목록 조회 - API
+     * refactor : RDB에서 조회한 데이터를 다이렉트로 Redis에 저장한다.
      */
     @GetMapping("/hot-item")
     public ResponseDto<HotItemListDto> getHotItemsSaveApi() {
-        return ResponseDto.ok(progressItemsService.getHotItems());
+        return ResponseDto.ok(progressItemsService.getHotItemList());
     }
 
     /**
@@ -59,10 +75,6 @@ public class ProgressItemsController {
     }
 
 
-    @GetMapping("/hot-save")
-    public void testtHotItemsSaveApi() {
-        progressItemsService.saveHotItems();
-    }
 
 
     @GetMapping("/new-save")

@@ -1,20 +1,19 @@
 package com.kcs3.panda.domain.auction.service;
 
 
-import com.kcs3.panda.domain.auction.dto.HotItemListDto;
-import com.kcs3.panda.domain.auction.dto.HotItemsDto;
-import com.kcs3.panda.domain.auction.dto.ProgressItemListDto;
-import com.kcs3.panda.domain.auction.dto.ProgressItemsDto;
+import com.kcs3.panda.domain.auction.dto.*;
 import com.kcs3.panda.domain.auction.entity.AuctionCompleteItem;
 import com.kcs3.panda.domain.auction.entity.AuctionInfo;
 import com.kcs3.panda.domain.auction.entity.AuctionProgressItem;
 import com.kcs3.panda.domain.auction.entity.Item;
 import com.kcs3.panda.domain.auction.repository.AuctionInfoRepository;
+import com.kcs3.panda.domain.auction.repository.ItemQueryDSLRepository;
 import com.kcs3.panda.domain.auction.repository.ItemRepository;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -84,6 +83,34 @@ public class ProgressItemsService {
 
 
     /**
+     * no offset 조회 서비스
+     */
+    public ProgressItemListDto getProgressItemsNoOffset(String category, Integer method, String region, Long lastItemId) {
+        List<ProgressItemsDto> itemDtoList = new ArrayList<>();
+
+        ItemSearchCondition condition = ItemSearchCondition.builder()
+                .category(category)
+                .method(method)
+                .region(region)
+                .lastItemId(lastItemId)
+                .limit(10)
+                .build();
+
+        List<AuctionProgressItem> progressItems = itemRepository.itemListSearch(condition);
+
+        for (AuctionProgressItem progressItem : progressItems) {
+            ProgressItemsDto progressItemsDto = ProgressItemsDto.fromProgressEntity(progressItem);
+            itemDtoList.add(progressItemsDto);
+        }
+
+        return ProgressItemListDto.builder()
+                .progressItemListDto(itemDtoList)
+                .build();
+    }
+
+
+
+    /**
      * Hot 아이템 목록 Redis 조회 서비스 로직
      */
     public HotItemListDto getHotItems(){
@@ -119,8 +146,10 @@ public class ProgressItemsService {
 
     /**
      * 핫아이템 Redis 저장 서비스 로직
+     * refactor : RDB에서 조회한 데이터를 Redis에 다이렉트 저장한다.
      */
-    public void saveHotItems() {
+    @Cacheable(value = "hotItems", key = "'hotItemList'")
+    public HotItemListDto getHotItemList() {
 
         // 최근 인기 아이템의 itemId 리스트 조회
         Pageable pageable = PageRequest.of(0, 10);
@@ -133,22 +162,16 @@ public class ProgressItemsService {
             hotItemList.add(hotItem);
         }
 
-
-
-        // 조회된 AuctionProgressItem을 HotItemsDto로 변환
+        // 조회된 AuctionProgressItem을 NewItemsDto로 변환
         List<HotItemsDto> hotItemsDtos = hotItemList
                 .stream()
                 .map(HotItemsDto::fromHotEntity)
                 .collect(Collectors.toList());
 
 
-        int i = 1;
-        for (HotItemsDto hotItemsDto : hotItemsDtos) {
-            redisTemplate.opsForValue().set("hot_item:" + i, hotItemsDto);
-            i++;
-        }
-
-
+        return HotItemListDto.builder()
+                .hotItemListDtos(hotItemsDtos)
+                .build();
     }
 
 

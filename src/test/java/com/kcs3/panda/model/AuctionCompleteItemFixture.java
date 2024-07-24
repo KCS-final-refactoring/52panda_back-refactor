@@ -12,7 +12,7 @@ public class AuctionCompleteItemFixture {
         return AuctionCompleteItem.builder()
                 .auctionCompleteItemId(1L)
                 .item(item)
-                .ItemTitle("완료된 경매물품1")
+                .itemTitle("완료된 경매물품1")
                 .thumbnail("thumbnail_image_url")
                 .startPrice(100)
                 .buyNowPrice(1000)
